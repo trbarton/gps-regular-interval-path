@@ -1,8 +1,12 @@
 var fs = require('fs');
+var crypto = require('crypto');
+
+var trackVal = 10;
+var nodeId = crypto.randomBytes(4).readUInt32BE(0, true);;
 
 var obj;
 //Reads the track.json object from file, Parses it as json then uses it as an argument
-fs.readFile('track.json', 'utf8', function (err, data) {
+fs.readFile('tracks/track' + trackVal + '.json', 'utf8', function (err, data) {
   if (err) throw err;
   obj = JSON.parse(data);
   splitPaths(obj.geometry.coordinates);
@@ -90,7 +94,7 @@ function writeCSV (coordinates) {
     var csvFileStringToWrite = '';
 
     for(i=1; i<coordinates.length; i++) {
-        var nodeID = '68EDAA33';
+        var nodeID = nodeId;
         var nodeType = 'B';
         var latitude = coordinates[i][1];
         var longitude = coordinates[i][0];
@@ -105,7 +109,7 @@ function writeCSV (coordinates) {
     
 
     //Write the output to file
-    fs.writeFile('boatData.csv', csvFileStringToWrite, (err) => {
+    fs.writeFile('tracks/better-tracks/track' + trackVal + '.csv', csvFileStringToWrite, (err) => {
         if (err) throw err;
         console.log('The CSV file has been saved!');
       });
