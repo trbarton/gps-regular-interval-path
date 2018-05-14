@@ -1,8 +1,7 @@
 var fs = require('fs');
-var crypto = require('crypto');
 
 var trackVal = 10;
-var nodeId = crypto.randomBytes(4).readUInt32BE(0, true);;
+var nodeId = Math.floor(Math.random()*(999-100+1)+100);
 
 var obj;
 //Reads the track.json object from file, Parses it as json then uses it as an argument
@@ -17,6 +16,20 @@ var outArray = [];
 
 //Maximum distance allowed between any two points 
 var maxDistance = 10;
+
+var track = {
+    "type": "Feature",
+    "properties": {
+        boatId: null,
+        times: [],
+        speeds: [],
+        bearings: []
+    },
+    "geometry": {
+      "type": "LineString",
+      "coordinates": []
+    }
+}
 
 //Text to prepend to output cooridantes
 var pre = `var track = {
@@ -57,6 +70,7 @@ function splitPaths(coordArray) {
         }
     }
     writeCSV(outArray);
+    writeTrack(outArray);
     //Write the output to file
     fs.writeFile('trackData.js',pre + JSON.stringify(outArray) + post, (err) => {
         if (err) throw err;
@@ -90,21 +104,43 @@ function measure(lat1, lon1, lat2, lon2){  // generally used geo measurement fun
     return d * 1000; // meters
 }
 
+function convertDecimalLat(latitude) {
+    // 50.844387113217294
+    let decimalMinutes = latitude % 1;
+    let degrees = latitude - decimalMinutes;
+    let minutes = decimalMinutes * 60
+
+    return '+' + degrees.toString() + minutes.toFixed(4);
+}
+
+function convertDecimalLon(longitude) {
+    // -0.9373385565621511
+    let decimalMinutes = longitude % 1;
+    let degrees = longitude - decimalMinutes;
+    let minutes = decimalMinutes * 60
+
+    return '-00' + degrees.toString() + minutes.toFixed(4).slice(1);
+}
+
+// `666,R,+0000.0000,+00000.0000,000.00,0.00,000000.000,V
 function writeCSV (coordinates) {
     var csvFileStringToWrite = '';
 
     for(i=1; i<coordinates.length; i++) {
         var nodeID = nodeId;
-        var nodeType = 'B';
-        var latitude = coordinates[i][1];
-        var longitude = coordinates[i][0];
-        var courseOverGround = geo.bearing(coordinates[i-1][1],coordinates[i-1][0],latitude, longitude);
-        var speedOverGround = 10;
-        var datetime = 1508274488 + i;
+        var nodeType = 'R';
+        var latitude = convertDecimalLat(coordinates[i][1]);
+        var longitude = convertDecimalLon(coordinates[i][0]);
+        var courseOverGround = geo.bearing(coordinates[i-1][1],coordinates[i-1][0],coordinates[i][1], coordinates[i][0]).toFixed(2);
+        var speedOverGround = Math.round(Math.random()).toString() + Math.floor(Math.random() * 9).toString() + '.' + Math.floor(Math.random() * 9).toString();
+        var datetime = '130000.000';
+        var gpsValid = 'V'
 
         var csvString = nodeID + ',' + nodeType + ',' + latitude + ',' +
-            longitude + ',' + courseOverGround + ',' + speedOverGround + ',' + datetime + "\n";
+            longitude + ',' + courseOverGround + ',' + speedOverGround + ',' + datetime + ',' +
+            gpsValid + "\n" ;
         csvFileStringToWrite += csvString;
+
     }
     
 
@@ -114,6 +150,32 @@ function writeCSV (coordinates) {
         console.log('The CSV file has been saved!');
       });
 }
+
+function writeTrack (coordinates) {
+
+    track.properties.boatId = nodeId;
+
+    for(i=1; i<coordinates.length; i++) {
+        var latitude = coordinates[i][1];
+        var longitude = coordinates[i][0];
+        var courseOverGround = geo.bearing(coordinates[i-1][1],coordinates[i-1][0],latitude, longitude);
+        var speedOverGround = 10;
+        var datetime = 1508274488 + i;
+
+        track.geometry.coordinates.push([longitude, latitude]);
+        track.properties.times.push(datetime);
+        track.properties.speeds.push(speedOverGround);
+        track.properties.bearings.push(courseOverGround);       
+    }
+    
+
+    //Write the output to file
+    fs.writeFile('tracks/geoJson-tracks/track' + trackVal + '.json', JSON.stringify(track), (err) => {
+        if (err) throw err;
+        console.log('The track file has been saved!');
+      });
+}
+
 
 var geo = {
     /**
